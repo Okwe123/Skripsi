@@ -1,0 +1,8 @@
+streamlit>=1.45.0
+pandas>=2.2.3
+altair>=5.5.0
+graphviz>=0.16
+numpy>=2.2.5
+matplotlib>=3.0.0
+Pillow>=11.2.1
+pycryptodome>=3.21.0
