@@ -252,72 +252,294 @@ def show_execution_time():
 
 
 def show_aes_animation():
-    """Animasi proses AES"""
-    steps = ["AddRoundKey", "SubBytes", "ShiftRows", "MixColumns"]
+    """Animasi proses AES dengan perhitungan manual"""
+    steps = ["Key Expansion", "AddRoundKey", "SubBytes", "ShiftRows", "MixColumns"]
     step = st.select_slider("Pilih tahap AES:", options=steps)
     
-    fig, ax = plt.subplots(figsize=(8, 6))
-    state = np.random.randint(0, 256, (4,4))
+    # State awal contoh (4x4 matrix dalam hex)
+    state = [
+        [0x32, 0x88, 0x31, 0xe0],
+        [0x43, 0x5a, 0x31, 0x37],
+        [0xf6, 0x30, 0x98, 0x07],
+        [0xa8, 0x8d, 0xa2, 0x34]
+    ]
     
-    if step == "AddRoundKey":
-        ax.matshow(state, cmap='viridis')
-        ax.set_title("AddRoundKey: XOR state dengan round key")
-        for (i, j), val in np.ndenumerate(state):
-            ax.text(j, i, f"{val:02X}\n⊕\n{random.randint(0,255):02X}", 
-                   ha='center', va='center', color='white' if val < 128 else 'black')
+    # Kunci awal contoh (16 byte)
+    key = [
+        [0x2b, 0x28, 0xab, 0x09],
+        [0x7e, 0xae, 0xf7, 0xcf],
+        [0x15, 0xd2, 0x15, 0x4f],
+        [0x16, 0xa6, 0x88, 0x3c]
+    ]
+    
+    # S-Box contoh
+    sbox = [
+        0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+        0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+        0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+        0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+        0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+        0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+        0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+        0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+        0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+        0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+        0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+        0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+        0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+        0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+    ]
+    
+    # Rcon (Round Constant)
+    rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36]
+    
+    st.subheader(f"Proses {step}")
+    
+    if step == "Key Expansion":
+        st.markdown("""
+        ### Key Expansion
+        Proses untuk menghasilkan round key dari kunci awal.
+        """)
+        
+        # Contoh perhitungan untuk round key pertama
+        st.markdown("""
+        **Langkah-langkah Key Expansion:**
+        1. **RotWord**: Memutar 1 byte terakhir dari word sebelumnya
+           - Contoh: [0x09, 0xcf, 0x4f, 0x3c] → [0xcf, 0x4f, 0x3c, 0x09]
+        2. **SubWord**: Substitusi setiap byte menggunakan S-Box
+           - Contoh: [0xcf, 0x4f, 0x3c, 0x09] → [0x8a, 0x84, 0xeb, 0x01]
+        3. **Rcon**: XOR dengan round constant
+           - Contoh: 0x8a ⊕ 0x01 = 0x8b
+        4. **XOR** dengan word sebelumnya
+           - Contoh: [0x2b, 0x7e, 0x15, 0x16] ⊕ [0x8b, 0x84, 0xeb, 0x01] = [0xa0, 0xfa, 0xfe, 0x17]
+        """)
+        
+        st.markdown("""
+        **Hasil Round Key Pertama:**
+        ```
+        Round Key 0 (Kunci Awal):
+        [0x2b, 0x28, 0xab, 0x09]
+        [0x7e, 0xae, 0xf7, 0xcf]
+        [0x15, 0xd2, 0x15, 0x4f]
+        [0x16, 0xa6, 0x88, 0x3c]
+        
+        Round Key 1:
+        [0xa0, 0x88, 0x23, 0x2a]
+        [0xfa, 0x54, 0xa3, 0x6c]
+        [0xfe, 0x2c, 0x39, 0x76]
+        [0x17, 0xb1, 0x39, 0x05]
+        ```
+        """)
+        
+    elif step == "AddRoundKey":
+        st.markdown("""
+        ### AddRoundKey
+        Operasi XOR antara state dengan round key.
+        """)
+        
+        # Contoh perhitungan untuk byte pertama
+        st.markdown("""
+        **Perhitungan Manual:**
+        - State[0][0] = 0x32
+        - RoundKey[0][0] = 0x2b
+        - Hasil XOR: 0x32 ⊕ 0x2b = 0x19
+        
+        ```python
+        0x32 dalam biner: 00110010
+        0x2b dalam biner: 00101011
+        XOR: 00011001 = 0x19
+        ```
+        """)
+        
+        st.markdown("""
+        **Hasil AddRoundKey:**
+        ```
+        State Awal:
+        [0x32, 0x88, 0x31, 0xe0]
+        [0x43, 0x5a, 0x31, 0x37]
+        [0xf6, 0x30, 0x98, 0x07]
+        [0xa8, 0x8d, 0xa2, 0x34]
+        
+        Round Key:
+        [0x2b, 0x28, 0xab, 0x09]
+        [0x7e, 0xae, 0xf7, 0xcf]
+        [0x15, 0xd2, 0x15, 0x4f]
+        [0x16, 0xa6, 0x88, 0x3c]
+        
+        State Hasil:
+        [0x19, 0xa0, 0x9a, 0xe9]
+        [0x3d, 0xf4, 0xc6, 0xf8]
+        [0xe3, 0xe2, 0x8d, 0x48]
+        [0xbe, 0x2b, 0x2a, 0x08]
+        ```
+        """)
         
     elif step == "SubBytes":
-        ax.matshow(state, cmap='plasma')
-        ax.set_title("SubBytes: Substitusi non-linear menggunakan S-Box")
-        for (i, j), val in np.ndenumerate(state):
-            ax.text(j, i, f"{val:02X}\n→\n{(val*17)%256:02X}",
-                   ha='center', va='center', color='white')
+        st.markdown("""
+        ### SubBytes
+        Substitusi non-linear menggunakan tabel S-Box.
+        """)
+        
+        # Contoh perhitungan untuk byte pertama
+        st.markdown("""
+        **Perhitungan Manual:**
+        - State[0][0] = 0x19
+        - Substitusi menggunakan S-Box:
+          - Baris: 0x1 (digit pertama)
+          - Kolom: 0x9 (digit kedua)
+          - Nilai S-Box[0x19] = 0xd4
+        """)
+        
+        st.markdown("""
+        **Hasil SubBytes:**
+        ```
+        State Awal:
+        [0x19, 0xa0, 0x9a, 0xe9]
+        [0x3d, 0xf4, 0xc6, 0xf8]
+        [0xe3, 0xe2, 0x8d, 0x48]
+        [0xbe, 0x2b, 0x2a, 0x08]
+        
+        State Hasil:
+        [0xd4, 0xe0, 0xb8, 0x1e]
+        [0x27, 0xbf, 0xb4, 0x41]
+        [0x11, 0x98, 0x5d, 0x52]
+        [0xae, 0xf1, 0xe5, 0x30]
+        ```
+        """)
         
     elif step == "ShiftRows":
-        ax.matshow(state, cmap='cool')
-        ax.set_title("ShiftRows: Geser baris secara siklik")
-        for i in range(4):
-            ax.text(3.5, i, f"← {i} baris", ha='right', va='center', fontsize=12)
+        st.markdown("""
+        ### ShiftRows
+        Geser baris secara siklik.
+        """)
+        
+        st.markdown("""
+        **Perhitungan Manual:**
+        - Baris 0: Tidak digeser
+        - Baris 1: Geser 1 byte ke kiri
+          - [0x27, 0xbf, 0xb4, 0x41] → [0xbf, 0xb4, 0x41, 0x27]
+        - Baris 2: Geser 2 byte
+          - [0x11, 0x98, 0x5d, 0x52] → [0x5d, 0x52, 0x11, 0x98]
+        - Baris 3: Geser 3 byte
+          - [0xae, 0xf1, 0xe5, 0x30] → [0x30, 0xae, 0xf1, 0xe5]
+        """)
+        
+        st.markdown("""
+        **Hasil ShiftRows:**
+        ```
+        State Awal:
+        [0xd4, 0xe0, 0xb8, 0x1e]
+        [0x27, 0xbf, 0xb4, 0x41]
+        [0x11, 0x98, 0x5d, 0x52]
+        [0xae, 0xf1, 0xe5, 0x30]
+        
+        State Hasil:
+        [0xd4, 0xe0, 0xb8, 0x1e]
+        [0xbf, 0xb4, 0x41, 0x27]
+        [0x5d, 0x52, 0x11, 0x98]
+        [0x30, 0xae, 0xf1, 0xe5]
+        ```
+        """)
         
     elif step == "MixColumns":
-        ax.matshow(state, cmap='spring')
-        ax.set_title("MixColumns: Transformasi matriks kolom")
-        for j in range(4):
-            ax.text(j, -0.5, f"Kolom {j+1}", ha='center', va='center', fontsize=12)
+        st.markdown("""
+        ### MixColumns
+        Transformasi matriks kolom menggunakan perkalian dalam Galois Field (GF(2⁸)).
+        """)
+        
+        st.markdown("""
+        **Perhitungan Manual untuk Kolom 0:**
+        ```
+        Kolom awal:
+        [0xd4]
+        [0xbf]
+        [0x5d]
+        [0x30]
+        
+        Perkalian matriks dengan:
+        [02 03 01 01]
+        [01 02 03 01]
+        [01 01 02 03]
+        [03 01 01 02]
+        
+        Hasil byte pertama:
+        (0x02 • 0xd4) ⊕ (0x03 • 0xbf) ⊕ (0x01 • 0x5d) ⊕ (0x01 • 0x30)
+        
+        Perhitungan detail:
+        1. 0x02 • 0xd4 = 
+           - Jika MSB = 1: (0xd4 << 1) ⊕ 0x1b = 0x1a8 ⊕ 0x1b = 0x1b3 → 0xb3
+        2. 0x03 • 0xbf = 0x02 • 0xbf ⊕ 0xbf = 0x17e ⊕ 0xbf = 0xc1
+        3. 0x01 • 0x5d = 0x5d
+        4. 0x01 • 0x30 = 0x30
+        
+        XOR semua hasil: 0xb3 ⊕ 0xc1 ⊕ 0x5d ⊕ 0x30 = 0x04
+        ```
+        """)
+        
+        st.markdown("""
+        **Hasil MixColumns:**
+        ```
+        State Awal:
+        [0xd4, 0xe0, 0xb8, 0x1e]
+        [0xbf, 0xb4, 0x41, 0x27]
+        [0x5d, 0x52, 0x11, 0x98]
+        [0x30, 0xae, 0xf1, 0xe5]
+        
+        State Hasil:
+        [0x04, 0xe0, 0x48, 0x28]
+        [0x66, 0xcb, 0xf8, 0x06]
+        [0x81, 0x19, 0xd3, 0x26]
+        [0xe5, 0x9a, 0x7a, 0x4c]
+        ```
+        """)
     
-    plt.axis('off')
-    st.pyplot(fig)
-    
-    with st.expander(f"Penjelasan {step}"):
-        if step == "AddRoundKey":
+    with st.expander(f"Penjelasan Detail {step}"):
+        if step == "Key Expansion":
             st.markdown("""
-            **AddRoundKey:**
-            - Operasi XOR antara state dengan round key
-            - Dilakukan setiap round
+            **Detail Key Expansion:**
+            1. **RotWord**: Memutar word 1 byte ke kiri
+            2. **SubWord**: Mengganti setiap byte menggunakan S-Box
+            3. **Rcon**: XOR byte pertama dengan round constant
+            4. **Generate Word Baru**: XOR word sebelumnya dengan hasil transformasi
+            """)
+            
+        elif step == "AddRoundKey":
+            st.markdown("""
+            **Detail AddRoundKey:**
+            - Operasi XOR sederhana antara state dan round key
+            - Dilakukan di awal (AddRoundKey awal) dan di setiap round
             - Merupakan satu-satunya operasi yang menggunakan kunci
             """)
+            
         elif step == "SubBytes":
             st.markdown("""
-            **SubBytes:**
-            - Substitusi non-linear menggunakan tabel S-Box
+            **Detail SubBytes:**
+            - Menggunakan tabel substitusi tetap (S-Box)
             - Memberikan non-linearitas pada cipher
             - Mencegah analisis linear
+            - S-Box didesain secara matematis untuk memenuhi properti kriptografi
             """)
+            
         elif step == "ShiftRows":
             st.markdown("""
-            **ShiftRows:**
+            **Detail ShiftRows:**
             - Baris 0: tidak digeser
             - Baris 1: geser 1 byte ke kiri
             - Baris 2: geser 2 byte
             - Baris 3: geser 3 byte
             - Menyebarkan byte ke kolom berbeda
+            - Meningkatkan difusi
             """)
+            
         elif step == "MixColumns":
             st.markdown("""
-            **MixColumns:**
-            - Mengalikan setiap kolom dengan matriks konstan
-            - Menggunakan perkalian dalam Galois Field (GF(2⁸))
+            **Detail MixColumns:**
+            - Mengalikan setiap kolom dengan matriks konstan dalam GF(2⁸)
+            - Operasi perkalian modulo polinomial irreducible x⁸ + x⁴ + x³ + x + 1
             - Memberikan difusi yang baik
+            - Setiap byte output tergantung pada 4 byte input
             """)
 
 # ========== TAMPILAN UTAMA ==========
