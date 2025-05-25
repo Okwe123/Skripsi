@@ -196,6 +196,14 @@ def show_avalanche_visual(avalanche_data):
     """.format(avg, min_val, max_val))
 
 def show_execution_time():
+    with st.sidebar.expander("🔍 Analisis Berdasarkan Hasil Pengujian", expanded=True):
+        st.markdown("""
+        ### Hasil Pengujian Aktual:
+
+        **Tabel 4.3.1: Hasil Waktu Eksekusi**
+        - Enkripsi dan dekripsi dilakukan terhadap 3 file berukuran berbeda.
+        - Waktu eksekusi menunjukkan proporsionalitas terhadap ukuran data.
+        """)
     """Visualisasi hasil pengujian waktu sesuai format skripsi"""
     st.markdown("#### Tabel 4.3.1 Hasil Pengujian Waktu Enkripsi dan Dekripsi")
     data = {
