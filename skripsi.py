@@ -467,51 +467,8 @@ elif selected == 'Avalanche Effect':
         show_avalanche_visual(hasil['avalanche'])
 
 elif selected == 'Pengujian Waktu':
-    if st.session_state.get('file_processed', False):
-        hasil = st.session_state['hasil']
-        
-        with st.sidebar.expander("⏱ Analisis Berdasarkan Hasil Pengujian"):
-            current_time = hasil['time']
-            
-            st.markdown(f"""
-            ### Hasil Pengujian Aktual:
-            
-            **Waktu Eksekusi:**
-            - Proses terakhir: {current_time:.4f} detik
-            - Untuk {jumlah_baris} baris data
-            - Kecepatan: {jumlah_baris/current_time:.2f} baris/detik
-            
-            **Breakdown Proses:**
-            1. Reverse Cipher (Pre-AES)
-            2. AES Encryption (ECB mode)
-            3. AES Decryption
-            4. Reverse Cipher Undo
-            """)
-            
-            if os.path.exists(LOG_FILE):
-                df_log = pd.read_csv(LOG_FILE)
-                if not df_log.empty:
-                    time_per_row = df_log["Waktu Eksekusi (detik)"] / df_log["Jumlah Data"]
-                    avg_time = time_per_row.mean()
-                    
-                    if len(df_log) > 1:
-                        growth_rate = (df_log["Waktu Eksekusi (detik)"].iloc[-1] - df_log["Waktu Eksekusi (detik)"].iloc[-2]) / \
-                                    (df_log["Jumlah Data"].iloc[-1] - df_log["Jumlah Data"].iloc[-2])
-                    else:
-                        growth_rate = avg_time
-                    
-                    st.markdown(f"""
-                    **Trend Waktu:**
-                    - Rata-rata waktu per baris: {avg_time:.6f} detik
-                    - Pertumbuhan waktu: {growth_rate:.6f} detik/baris
-                    - Kompleksitas: {'Linear (O(n))' if growth_rate > 0 else 'Konstan'}
-                    """)
-        
-        st.write(f"⏱ Waktu eksekusi: {hasil['time']:.2f} detik")
-        
-        if os.path.exists(LOG_FILE):
-            df_log = pd.read_csv(LOG_FILE)
-            st.line_chart(df_log.set_index("Jumlah Data"))
+    show_execution_time()
+
 
 elif selected == 'Etika Islam & Amanah':
     st.markdown("""
