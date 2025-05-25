@@ -163,6 +163,11 @@ def show_avalanche_visual(avalanche_data):
     df = pd.DataFrame(avalanche_data, columns=["Baris A", "Baris B", "Persentase (%)"])
     df["Persentase (%)"] = df["Persentase (%)"].astype(float).round(2)
 
+    # Hitung statistik
+    avg_percent = df['Persentase (%)'].mean()
+    min_percent = df['Persentase (%)'].min()
+    max_percent = df['Persentase (%)'].max()
+
     st.markdown("#### Tabel 4.2.1 Hasil Pengujian Avalanche Effect")
     st.table(df.style.format({"Persentase (%)": "{:.2f}"}))
 
@@ -179,26 +184,22 @@ def show_avalanche_visual(avalanche_data):
     )
     st.altair_chart(chart, use_container_width=True)
 
-    avg = df['Persentase (%)'].mean()
-    min_val = df['Persentase (%)'].min()
-    max_val = df['Persentase (%)'].max()
-
-    st.markdown("""
+    st.markdown(f"""
     #### Analisis Pengujian Avalanche Effect
-    - Rata-rata perubahan bit: **{:.2f}%**
-    - Perubahan minimum: **{:.2f}%**, maksimum: **{:.2f}%**
+    - Rata-rata perubahan bit: **{avg_percent:.2f}%**
+    - Perubahan minimum: **{min_percent:.2f}%**, maksimum: **{max_percent:.2f}%**
 
-     **Statistik Avalanche Effect:**
-            - Rata-rata: {avg_percent:.2f}%
-            - Minimum: {min_percent:.2f}%
-            - Maksimum: {max_percent:.2f}%
-            
-            **Interpretasi:**
-            - Persentase perubahan bit dihitung dari perbandingan ciphertext baris berurutan
-            - Nilai ideal mendekati 50% untuk algoritma kriptografi yang baik
-            - Implementasi ini menunjukkan range {min_percent:.2f}% sampai {max_percent:.2f}%
-            - Rata-rata {avg_percent:.2f}% menunjukkan efek avalanche yang {'baik' if avg_percent > 40 else 'perlu diperbaiki'}
-            """)
+    #### Interpretasi
+    - Persentase perubahan bit dihitung dari perbandingan ciphertext baris berurutan
+    - Nilai ideal mendekati 50% untuk algoritma kriptografi yang baik
+    - Implementasi ini menunjukkan range {min_percent:.2f}% sampai {max_percent:.2f}%
+    - Rata-rata {avg_percent:.2f}% menunjukkan efek avalanche yang {'baik' if avg_percent > 40 else 'perlu diperbaiki'}
+
+    #### Kesimpulan
+    Kombinasi algoritma memiliki **kemampuan difusi yang {'baik' if avg_percent > 40 else 'kurang'}**, dengan rata-rata persentase perubahan bit {avg_percent:.2f}%. 
+    {'Hasil ini memenuhi standar avalanche effect yang baik untuk algoritma kriptografi.' if avg_percent > 40 
+    else 'Perlu dilakukan perbaikan algoritma untuk meningkatkan efek avalanche.'}
+    """)
 
 def show_execution_time():
     with st.sidebar.expander("🔍 Analisis Berdasarkan Hasil Pengujian", expanded=True):
