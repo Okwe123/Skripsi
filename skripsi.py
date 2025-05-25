@@ -188,12 +188,17 @@ def show_avalanche_visual(avalanche_data):
     - Rata-rata perubahan bit: **{:.2f}%**
     - Perubahan minimum: **{:.2f}%**, maksimum: **{:.2f}%**
 
-    #### Interpretasi
-    Avalanche effect yang baik ditandai dengan perubahan mendekati 50%. Hasil pengujian menunjukkan bahwa algoritma kombinasi AES 128-bit dan Reverse Cipher menghasilkan perubahan bit yang bervariasi antar baris, namun secara umum cukup signifikan untuk menunjukkan efek avalanche yang baik.
-
-    #### Kesimpulan
-    Kombinasi algoritma memiliki **kemampuan difusi yang cukup baik**, dengan rata-rata persentase perubahan bit lebih dari 40%. Hal ini menunjukkan bahwa perubahan kecil pada input plaintext dapat menghasilkan perbedaan besar pada ciphertext.
-    """.format(avg, min_val, max_val))
+     **Statistik Avalanche Effect:**
+            - Rata-rata: {avg_percent:.2f}%
+            - Minimum: {min_percent:.2f}%
+            - Maksimum: {max_percent:.2f}%
+            
+            **Interpretasi:**
+            - Persentase perubahan bit dihitung dari perbandingan ciphertext baris berurutan
+            - Nilai ideal mendekati 50% untuk algoritma kriptografi yang baik
+            - Implementasi ini menunjukkan range {min_percent:.2f}% sampai {max_percent:.2f}%
+            - Rata-rata {avg_percent:.2f}% menunjukkan efek avalanche yang {'baik' if avg_percent > 40 else 'perlu diperbaiki'}
+            """)
 
 def show_execution_time():
     with st.sidebar.expander("🔍 Analisis Berdasarkan Hasil Pengujian", expanded=True):
