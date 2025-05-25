@@ -331,8 +331,13 @@ def show_key_expansion():
         st.error("Pastikan semua komponen (S-Box, Rcon, dll) terdefinisi dengan benar")
 
 # Tambahkan ke menu AES animation
+import streamlit as st
+import pandas as pd
+
 def show_aes_animation():
     """Animasi proses AES dengan perhitungan manual"""
+    st.title("🔐 Animasi Proses AES")
+    
     steps = ["AddRoundKey", "SubBytes", "ShiftRows", "MixColumns"]
     step = st.select_slider("Pilih tahap AES:", options=steps)
     
@@ -482,7 +487,7 @@ def show_aes_animation():
         ```
         """)
     
-    with st.expander(f"Penjelasan Detail {step}"):
+    with st.expander(f"📖 Penjelasan Detail {step}"):
         if step == "AddRoundKey":
             st.markdown("""
             **Detail AddRoundKey:**
@@ -513,11 +518,11 @@ def show_aes_animation():
             st.markdown("""
             **Detail MixColumns:**
             - Mengalikan setiap kolom dengan matriks konstan dalam GF(2⁸)
-            - Operasi perkalian modulo polinomial irreducible
+            - Operasi perkalian modulo polinomial irreducible x⁸ + x⁴ + x³ + x + 1
             - Memberikan difusi yang baik
             """)
 
-    # Penjelasan singkat tentang key expansion tanpa visualisasi besar
+    # Penjelasan singkat tentang key expansion
     st.markdown("---")
     with st.expander("ℹ️ Tentang Key Expansion (Ringkas)"):
         st.markdown("""
@@ -534,6 +539,10 @@ def show_aes_animation():
           Round Key 1: a0 fa fe 17 88 54 2c b1 23 a3 39 2a 2a 6c 76 05
           ```
         """)
+
+# Jalankan aplikasi
+if __name__ == "__main__":
+    show_aes_animation()
 # ========== TAMPILAN UTAMA ==========
 st.title("🔐 Aplikasi Enkripsi Data Material SAP")
 st.write("AES-128 + Reverse Cipher")
