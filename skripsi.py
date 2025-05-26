@@ -238,6 +238,26 @@ def show_execution_time():
     st.altair_chart(chart, use_container_width=True)
 
     st.markdown("""
+    #### Interpretasi Pengujian Waktu
+    1. **Peningkatan Waktu Seiring Ukuran File**
+       - Terdapat kecenderungan yang konsisten di mana waktu yang dibutuhkan untuk proses enkripsi maupun dekripsi meningkat seiring dengan bertambahnya ukuran file.
+       - File dengan ukuran 150 KB memiliki waktu enkripsi sebesar 0,4500 detik dan waktu dekripsi sebesar 0,4000 detik.
+       - File berukuran 600 KB memerlukan waktu enkripsi sebesar 1,8500 detik dan dekripsi sebesar 1,7200 detik.
+       - Hal ini menunjukkan bahwa kompleksitas data berbanding lurus terhadap beban komputasi yang dibutuhkan oleh algoritma.
+    2. **Perbandingan Waktu Enkripsi dan Dekripsi**
+       - Waktu enkripsi cenderung sedikit lebih tinggi dibandingkan waktu dekripsi untuk setiap ukuran file.
+       - Selisih waktu ini dapat disebabkan oleh urutan operasi yang lebih kompleks pada saat proses enkripsi, terutama karena penerapan proses pembalikan (reverse) sebelum algoritma AES-128.
+       - Namun, perbedaan ini tergolong kecil dan tidak signifikan, yang menunjukkan efisiensi simetris dari algoritma yang digunakan.
+
+    3. **Visualisasi Tren pada Gambar 4.3.1**
+       - Grafik batang pada Gambar 4.3.1 menggambarkan waktu dekripsi terhadap ukuran file.
+       - Grafik tersebut memperlihatkan tren linier yang jelas, di mana semakin besar ukuran file, maka semakin tinggi kolom batangnya.
+       - Hal ini memperkuat hasil pengamatan dari tabel bahwa waktu proses meningkat sebanding dengan besarnya data yang diproses.
+    4. **Implikasi terhadap Performa Sistem**
+       - Berdasarkan hasil pengujian ini, dapat disimpulkan bahwa algoritma kombinasi AES-128 dan Reverse Cipher memiliki performa yang stabil dan skalabel.
+       - Algoritma ini mampu menangani data dengan ukuran kecil hingga sedang secara efisien, dengan waktu proses yang masih tergolong cepat.
+       - Layak untuk diimplementasikan pada sistem perlindungan data dalam konteks penggunaan di lingkungan perusahaan seperti PT Indonesia Comnet Plus.            
+                
     #### Analisa Hasil Pengujian Waktu
     1. **Hubungan Proporsional antara Ukuran File dan Waktu Proses**
        - AES-128 bekerja pada blok tetap 16 byte, sehingga semakin besar file, semakin banyak blok yang diproses.
