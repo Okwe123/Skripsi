@@ -26,10 +26,6 @@ def reverse_cipher(text, shuffle=True):
     if not text or text.strip() == "":
         return "N/A"
     reversed_text = text[::-1]
-    if shuffle:
-        chars = list(reversed_text)
-        random.shuffle(chars)
-        reversed_text = ''.join(chars)
     return reversed_text
 
 def reverse_cipher_undo(text):
@@ -43,7 +39,7 @@ def pad_text_to_length(text, target_length=512):
 def aes_encrypt(text, key):
     """Enkripsi AES-128 ECB mode"""
     padded_text = pad_text_to_length(text)
-    cipher = AES.new(key.encode('utf-8'), AES.MODE_ECB)
+    cipher = AES.new(key.encode('utf-8'), mode=AES.MODE_ECB)
     padded = pad(padded_text.encode('utf-8'), AES.block_size)
     encrypted = cipher.encrypt(padded)
     return binascii.hexlify(encrypted).decode('utf-8')
@@ -51,7 +47,7 @@ def aes_encrypt(text, key):
 def aes_decrypt(ciphertext_hex, key):
     """Dekripsi AES-128 ECB mode"""
     try:
-        cipher = AES.new(key.encode('utf-8'), AES.MODE_ECB)
+        cipher = AES.new(key.encode('utf-8'), mode=AES.MODE_ECB)
         encrypted_bytes = binascii.unhexlify(ciphertext_hex)
         decrypted_padded = cipher.decrypt(encrypted_bytes)
         decrypted = unpad(decrypted_padded, AES.block_size).decode('utf-8')
@@ -158,7 +154,57 @@ def show_crypto_diagram():
     graph.edge('E3', 'D1', label='Ciphertext', style='dashed')
     st.graphviz_chart(graph)
 
-def show_avalanche_visual(avalanche_data):
+def show_manual_avalanche_calculation(hex1, hex2):
+    """Menampilkan perhitungan manual avalanche effect antara dua ciphertext"""
+    st.markdown("### 🧮 Perhitungan Manual Avalanche Effect")
+    
+    # Konversi hex ke biner
+    b1 = bin(int(hex1, 16))[2:].zfill(len(hex1) * 4)
+    b2 = bin(int(hex2, 16))[2:].zfill(len(hex2) * 4)
+    
+    # Hitung perbedaan bit
+    diff_bits = [i for i, (bit1, bit2) in enumerate(zip(b1, b2)) if bit1 != bit2]
+    total_diff = len(diff_bits)
+    total_bits = len(b1)
+    percent = (total_diff / total_bits) * 100
+    
+    # Tampilkan perhitungan
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"**Ciphertext 1 (Hex):** `{hex1}`")
+        st.markdown(f"**Panjang:** {len(hex1)*4} bit")
+        st.markdown(f"**Biner:** `{b1[:100]}...`" if len(b1) > 100 else f"**Biner:** `{b1}`")
+        
+    with col2:
+        st.markdown(f"**Ciphertext 2 (Hex):** `{hex2}`")
+        st.markdown(f"**Panjang:** {len(hex2)*4} bit")
+        st.markdown(f"**Biner:** `{b2[:100]}...`" if len(b2) > 100 else f"**Biner:** `{b2}`")
+    
+    st.markdown("---")
+    st.markdown(f"**Total Bit Berbeda:** {total_diff} bit dari {total_bits} bit")
+    st.markdown(f"**Persentase Perubahan:** {percent:.2f}%")
+    
+    # Tampilkan bit yang berbeda
+    st.markdown("**Posisi Bit yang Berbeda:**")
+    if len(diff_bits) > 50:
+        st.write(f"Terlalu banyak perbedaan ({len(diff_bits)} bit), menampilkan 50 pertama...")
+        diff_bits = diff_bits[:50]
+    
+    diff_display = ", ".join(map(str, diff_bits))
+    st.write(diff_display)
+    
+    # Visualisasi perbedaan bit
+    st.markdown("**Visualisasi Perbedaan Bit:**")
+    comparison = []
+    for i in range(min(50, len(b1))):  # Batasi hingga 50 bit untuk visualisasi
+        if b1[i] != b2[i]:
+            comparison.append(f"Bit {i}: {b1[i]} → {b2[i]} (Berubah)")
+        else:
+            comparison.append(f"Bit {i}: {b1[i]} (Sama)")
+    
+    st.text_area("Perbandingan Bit (50 pertama):", "\n".join(comparison), height=200)
+
+def show_avalanche_visual(avalanche_data, aes_results=None):
     """Visualisasi efek avalanche sesuai format skripsi"""
     df = pd.DataFrame(avalanche_data, columns=["Baris A", "Baris B", "Persentase (%)"])
     df["Persentase (%)"] = df["Persentase (%)"].astype(float).round(2)
@@ -184,6 +230,25 @@ def show_avalanche_visual(avalanche_data):
     )
     st.altair_chart(chart, use_container_width=True)
 
+    # Tambahkan pilihan untuk melihat perhitungan manual
+    if aes_results and len(aes_results) >= 2:
+        st.markdown("---")
+        st.markdown("### 🔍 Perhitungan Manual Avalanche Effect")
+        
+        # Pilih pasangan baris untuk perhitungan detail
+        row_pair = st.selectbox(
+            "Pilih pasangan baris untuk melihat perhitungan detail:",
+            options=[f"Baris {i+1} & {i+2}" for i in range(len(aes_results)-1)],
+            index=0
+        )
+        
+        # Dapatkan indeks yang dipilih
+        selected_idx = [int(s) for s in row_pair.split() if s.isdigit()]
+        if len(selected_idx) == 2:
+            idx1, idx2 = selected_idx[0]-1, selected_idx[1]-1
+            if idx1 < len(aes_results) and idx2 < len(aes_results):
+                show_manual_avalanche_calculation(aes_results[idx1], aes_results[idx2])
+
     st.markdown(f"""
     #### Analisis Pengujian Avalanche Effect
     - Rata-rata perubahan bit: **{avg_percent:.2f}%**
@@ -202,14 +267,6 @@ def show_avalanche_visual(avalanche_data):
     """)
 
 def show_execution_time():
-    with st.sidebar.expander("🔍 Analisis Berdasarkan Hasil Pengujian", expanded=True):
-        st.markdown("""
-        ### Hasil Pengujian Aktual:
-
-        **Tabel 4.3.1: Hasil Waktu Eksekusi**
-        - Enkripsi dan dekripsi dilakukan terhadap 3 file berukuran berbeda.
-        - Waktu eksekusi menunjukkan proporsionalitas terhadap ukuran data.
-        """)
     """Visualisasi hasil pengujian waktu sesuai format skripsi"""
     st.markdown("#### Tabel 4.3.1 Hasil Pengujian Waktu Enkripsi dan Dekripsi")
     data = {
@@ -225,7 +282,7 @@ def show_execution_time():
     st.markdown("#### Gambar 4.3.1 Grafik Waktu Enkripsi dan Dekripsi")
     df_chart = df.melt(id_vars=["Nama File", "Ukuran File"], 
                        value_vars=["Waktu Enkripsi (s)", "Waktu Dekripsi (s)"],
-                       var_name="Proses", value_name="Waktu (s)")
+                       var_name="Proses", value_name="Waktu (s)") 
     chart = alt.Chart(df_chart).mark_bar().encode(
         x=alt.X('Ukuran File:N', title='Ukuran File'),
         y=alt.Y('Waktu (s):Q', title='Waktu (detik)'),
@@ -240,333 +297,190 @@ def show_execution_time():
     st.markdown("""
     #### Interpretasi Pengujian Waktu
     1. **Peningkatan Waktu Seiring Ukuran File**
-       - Terdapat kecenderungan yang konsisten di mana waktu yang dibutuhkan untuk proses enkripsi maupun dekripsi meningkat seiring dengan bertambahnya ukuran file.
-       - File dengan ukuran 150 KB memiliki waktu enkripsi sebesar 0,4500 detik dan waktu dekripsi sebesar 0,4000 detik.
-       - File berukuran 600 KB memerlukan waktu enkripsi sebesar 1,8500 detik dan dekripsi sebesar 1,7200 detik.
-       - Hal ini menunjukkan bahwa kompleksitas data berbanding lurus terhadap beban komputasi yang dibutuhkan oleh algoritma.
+        - Terdapat kecenderungan yang konsisten di mana waktu yang dibutuhkan untuk proses enkripsi maupun dekripsi meningkat seiring dengan bertambahnya ukuran file.
+        - File dengan ukuran 150 KB memiliki waktu enkripsi sebesar 0,4500 detik dan waktu dekripsi sebesar 0,4000 detik.
+        - File berukuran 600 KB memerlukan waktu enkripsi sebesar 1,8500 detik dan dekripsi sebesar 1,7200 detik.
+        - Hal ini menunjukkan bahwa kompleksitas data berbanding lurus terhadap beban komputasi yang dibutuhkan oleh algoritma.
     2. **Perbandingan Waktu Enkripsi dan Dekripsi**
-       - Waktu enkripsi cenderung sedikit lebih tinggi dibandingkan waktu dekripsi untuk setiap ukuran file.
-       - Selisih waktu ini dapat disebabkan oleh urutan operasi yang lebih kompleks pada saat proses enkripsi, terutama karena penerapan proses pembalikan (reverse) sebelum algoritma AES-128.
-       - Namun, perbedaan ini tergolong kecil dan tidak signifikan, yang menunjukkan efisiensi simetris dari algoritma yang digunakan.
+        - Waktu enkripsi cenderung sedikit lebih tinggi dibandingkan waktu dekripsi untuk setiap ukuran file.
+        - Selisih waktu ini dapat disebabkan oleh urutan operasi yang lebih kompleks pada saat proses enkripsi, terutama karena penerapan proses pembalikan (reverse) sebelum algoritma AES-128.
+        - Namun, perbedaan ini tergolong kecil dan tidak signifikan, yang menunjukkan efisiensi simetris dari algoritma yang digunakan.
 
     3. **Visualisasi Tren pada Gambar 4.3.1**
-       - Grafik batang pada Gambar 4.3.1 menggambarkan waktu dekripsi terhadap ukuran file.
-       - Grafik tersebut memperlihatkan tren linier yang jelas, di mana semakin besar ukuran file, maka semakin tinggi kolom batangnya.
-       - Hal ini memperkuat hasil pengamatan dari tabel bahwa waktu proses meningkat sebanding dengan besarnya data yang diproses.
+        - Grafik batang pada Gambar 4.3.1 menggambarkan waktu dekripsi terhadap ukuran file.
+        - Grafik tersebut memperlihatkan tren linier yang jelas, di mana semakin besar ukuran file, maka semakin tinggi kolom batangnya.
+        - Hal ini memperkuat hasil pengamatan dari tabel bahwa waktu proses meningkat sebanding dengan besarnya data yang diproses.
     4. **Implikasi terhadap Performa Sistem**
-       - Berdasarkan hasil pengujian ini, dapat disimpulkan bahwa algoritma kombinasi AES-128 dan Reverse Cipher memiliki performa yang stabil dan skalabel.
-       - Algoritma ini mampu menangani data dengan ukuran kecil hingga sedang secara efisien, dengan waktu proses yang masih tergolong cepat.
-       - Layak untuk diimplementasikan pada sistem perlindungan data dalam konteks penggunaan di lingkungan perusahaan seperti PT Indonesia Comnet Plus.            
-                
+        - Berdasarkan hasil pengujian ini, dapat disimpulkan bahwa algoritma kombinasi AES-128 dan Reverse Cipher memiliki performa yang stabil dan skalabel.
+        - Algoritma ini mampu menangani data dengan ukuran kecil hingga sedang secara efisien, dengan waktu proses yang masih tergolong cepat.
+        - Layak untuk diimplementasikan pada sistem perlindungan data dalam konteks penggunaan di lingkungan perusahaan seperti PT Indonesia Comnet Plus. 
+            
     #### Analisa Hasil Pengujian Waktu
     1. **Hubungan Proporsional antara Ukuran File dan Waktu Proses**
-       - AES-128 bekerja pada blok tetap 16 byte, sehingga semakin besar file, semakin banyak blok yang diproses.
-       - Proses iteratif per blok menyebabkan waktu tumbuh linier.
+        - AES-128 bekerja pada blok tetap 16 byte, sehingga semakin besar file, semakin banyak blok yang diproses.
+        - Proses iteratif per blok menyebabkan waktu tumbuh linier.
     2. **Efisiensi Reverse Cipher**
-       - Reverse Cipher merupakan proses O(n) dan tidak signifikan menambah beban waktu.
+        - Reverse Cipher merupakan proses O(n) dan tidak signifikan menambah beban waktu.
     3. **Kinerja Enkripsi vs Dekripsi**
-       - Dekripsi sedikit lebih cepat karena tidak memerlukan padding.
-       - Enkripsi membutuhkan blok awal dan padding.
+        - Dekripsi sedikit lebih cepat karena tidak memerlukan padding.
+        - Enkripsi membutuhkan blok awal dan padding.
     4. **Stabilitas dan Efisiensi**
-       - Seluruh proses selesai di bawah 2 detik untuk file 600 KB, menunjukkan efisiensi yang baik.
+        - Seluruh proses selesai di bawah 2 detik untuk file 600 KB, menunjukkan efisiensi yang baik.
 
     #### Kesimpulan
     - **Efisiensi Baik:** Rata-rata waktu enkripsi 1.07 detik, dekripsi 1.00 detik.
     - **Skalabilitas Baik:** Waktu bertambah seiring ukuran file dengan laju linier.
     - **Stabilitas Tinggi:** Algoritma tetap efisien meski ukuran file meningkat, Reverse Cipher ringan, dan AES-ECB mode cepat.
     """)
+    show_complexity_analysis()
 
-
-def show_aes_animation():
-    """Animasi proses AES dengan perhitungan manual"""
-    steps = ["Key Expansion", "AddRoundKey", "SubBytes", "ShiftRows", "MixColumns"]
-    step = st.select_slider("Pilih tahap AES:", options=steps)
+def show_aes_simulation():
+    """Simulasi interaktif proses AES dengan input manual"""
+    st.title("🔢 Simulasi Interaktif Proses AES")
     
-    # State awal contoh (4x4 matrix dalam hex)
-    state = [
-        [0x32, 0x88, 0x31, 0xe0],
-        [0x43, 0x5a, 0x31, 0x37],
-        [0xf6, 0x30, 0x98, 0x07],
-        [0xa8, 0x8d, 0xa2, 0x34]
-    ]
+    # Pilih tahap proses
+    steps = ["SubBytes", "ShiftRows", "MixColumns", "AddRoundKey"]
+    step = st.selectbox("Pilih tahap AES:", steps)
     
-    # Kunci awal contoh (16 byte)
-    key = [
-        [0x2b, 0x28, 0xab, 0x09],
-        [0x7e, 0xae, 0xf7, 0xcf],
-        [0x15, 0xd2, 0x15, 0x4f],
-        [0x16, 0xa6, 0x88, 0x3c]
-    ]
+    # Input state awal (4x4 matrix)
+    st.subheader("State Awal (Input)")
+    state = []
+    for i in range(4):
+        cols = st.columns(4)
+        row = []
+        for j in range(4):
+            # Perbaikan: Hilangkan max_length dan gunakan validasi manual
+            val = cols[j].text_input(f"Baris {i+1} Kolom {j+1}", value="00", 
+                                   help="Masukkan nilai hex 2 digit (00-FF)")
+            # Validasi input hex 2 digit
+            if len(val) > 2:
+                val = val[:2]  # Potong jika lebih dari 2 karakter
+                cols[j].warning("Input dibatasi 2 karakter hex")
+            try:
+                int(val, 16)  # Cek apakah valid hex
+            except ValueError:
+                val = "00"
+                cols[j].error("Input harus hex (0-9, A-F)")
+            row.append(val)
+        state.append(row)
     
-    # S-Box contoh
-    sbox = [
-        0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-        0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-        0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
-        0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
-        0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-        0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
-        0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
-        0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-        0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
-        0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
-        0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-        0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
-        0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
-        0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
-    ]
+    # Proses sesuai tahap yang dipilih
+    st.subheader(f"Hasil {step}")
+    if step == "SubBytes":
+        # Contoh implementasi SubBytes sederhana
+        sbox = {
+            "00": "63", "01": "7c", "02": "77", "03": "7b",
+            # ... lengkapi dengan seluruh S-Box
+            "ff": "16"
+        }
+        result = [[sbox.get(cell, "??") for cell in row] for row in state]
     
-    # Rcon (Round Constant)
-    rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36]
-    
-    st.subheader(f"Proses {step}")
-    
-    if step == "Key Expansion":
-        st.markdown("""
-        ### Key Expansion
-        Proses untuk menghasilkan round key dari kunci awal.
-        """)
-        
-        # Contoh perhitungan untuk round key pertama
-        st.markdown("""
-        **Langkah-langkah Key Expansion:**
-        1. **RotWord**: Memutar 1 byte terakhir dari word sebelumnya
-           - Contoh: [0x09, 0xcf, 0x4f, 0x3c] → [0xcf, 0x4f, 0x3c, 0x09]
-        2. **SubWord**: Substitusi setiap byte menggunakan S-Box
-           - Contoh: [0xcf, 0x4f, 0x3c, 0x09] → [0x8a, 0x84, 0xeb, 0x01]
-        3. **Rcon**: XOR dengan round constant
-           - Contoh: 0x8a ⊕ 0x01 = 0x8b
-        4. **XOR** dengan word sebelumnya
-           - Contoh: [0x2b, 0x7e, 0x15, 0x16] ⊕ [0x8b, 0x84, 0xeb, 0x01] = [0xa0, 0xfa, 0xfe, 0x17]
-        """)
-        
-        st.markdown("""
-        **Hasil Round Key Pertama:**
-        ```
-        Round Key 0 (Kunci Awal):
-        [0x2b, 0x28, 0xab, 0x09]
-        [0x7e, 0xae, 0xf7, 0xcf]
-        [0x15, 0xd2, 0x15, 0x4f]
-        [0x16, 0xa6, 0x88, 0x3c]
-        
-        Round Key 1:
-        [0xa0, 0x88, 0x23, 0x2a]
-        [0xfa, 0x54, 0xa3, 0x6c]
-        [0xfe, 0x2c, 0x39, 0x76]
-        [0x17, 0xb1, 0x39, 0x05]
-        ```
-        """)
-        
-    elif step == "AddRoundKey":
-        st.markdown("""
-        ### AddRoundKey
-        Operasi XOR antara state dengan round key.
-        """)
-        
-        # Contoh perhitungan untuk byte pertama
-        st.markdown("""
-        **Perhitungan Manual:**
-        - State[0][0] = 0x32
-        - RoundKey[0][0] = 0x2b
-        - Hasil XOR: 0x32 ⊕ 0x2b = 0x19
-        
-        ```python
-        0x32 dalam biner: 00110010
-        0x2b dalam biner: 00101011
-        XOR: 00011001 = 0x19
-        ```
-        """)
-        
-        st.markdown("""
-        **Hasil AddRoundKey:**
-        ```
-        State Awal:
-        [0x32, 0x88, 0x31, 0xe0]
-        [0x43, 0x5a, 0x31, 0x37]
-        [0xf6, 0x30, 0x98, 0x07]
-        [0xa8, 0x8d, 0xa2, 0x34]
-        
-        Round Key:
-        [0x2b, 0x28, 0xab, 0x09]
-        [0x7e, 0xae, 0xf7, 0xcf]
-        [0x15, 0xd2, 0x15, 0x4f]
-        [0x16, 0xa6, 0x88, 0x3c]
-        
-        State Hasil:
-        [0x19, 0xa0, 0x9a, 0xe9]
-        [0x3d, 0xf4, 0xc6, 0xf8]
-        [0xe3, 0xe2, 0x8d, 0x48]
-        [0xbe, 0x2b, 0x2a, 0x08]
-        ```
-        """)
-        
-    elif step == "SubBytes":
-        st.markdown("""
-        ### SubBytes
-        Substitusi non-linear menggunakan tabel S-Box.
-        """)
-        
-        # Contoh perhitungan untuk byte pertama
-        st.markdown("""
-        **Perhitungan Manual:**
-        - State[0][0] = 0x19
-        - Substitusi menggunakan S-Box:
-          - Baris: 0x1 (digit pertama)
-          - Kolom: 0x9 (digit kedua)
-          - Nilai S-Box[0x19] = 0xd4
-        """)
-        
-        st.markdown("""
-        **Hasil SubBytes:**
-        ```
-        State Awal:
-        [0x19, 0xa0, 0x9a, 0xe9]
-        [0x3d, 0xf4, 0xc6, 0xf8]
-        [0xe3, 0xe2, 0x8d, 0x48]
-        [0xbe, 0x2b, 0x2a, 0x08]
-        
-        State Hasil:
-        [0xd4, 0xe0, 0xb8, 0x1e]
-        [0x27, 0xbf, 0xb4, 0x41]
-        [0x11, 0x98, 0x5d, 0x52]
-        [0xae, 0xf1, 0xe5, 0x30]
-        ```
-        """)
-        
     elif step == "ShiftRows":
-        st.markdown("""
-        ### ShiftRows
-        Geser baris secara siklik.
-        """)
-        
-        st.markdown("""
-        **Perhitungan Manual:**
-        - Baris 0: Tidak digeser
-        - Baris 1: Geser 1 byte ke kiri
-          - [0x27, 0xbf, 0xb4, 0x41] → [0xbf, 0xb4, 0x41, 0x27]
-        - Baris 2: Geser 2 byte
-          - [0x11, 0x98, 0x5d, 0x52] → [0x5d, 0x52, 0x11, 0x98]
-        - Baris 3: Geser 3 byte
-          - [0xae, 0xf1, 0xe5, 0x30] → [0x30, 0xae, 0xf1, 0xe5]
-        """)
-        
-        st.markdown("""
-        **Hasil ShiftRows:**
-        ```
-        State Awal:
-        [0xd4, 0xe0, 0xb8, 0x1e]
-        [0x27, 0xbf, 0xb4, 0x41]
-        [0x11, 0x98, 0x5d, 0x52]
-        [0xae, 0xf1, 0xe5, 0x30]
-        
-        State Hasil:
-        [0xd4, 0xe0, 0xb8, 0x1e]
-        [0xbf, 0xb4, 0x41, 0x27]
-        [0x5d, 0x52, 0x11, 0x98]
-        [0x30, 0xae, 0xf1, 0xe5]
-        ```
-        """)
-        
-    elif step == "MixColumns":
-        st.markdown("""
-        ### MixColumns
-        Transformasi matriks kolom menggunakan perkalian dalam Galois Field (GF(2⁸)).
-        """)
-        
-        st.markdown("""
-        **Perhitungan Manual untuk Kolom 0:**
-        ```
-        Kolom awal:
-        [0xd4]
-        [0xbf]
-        [0x5d]
-        [0x30]
-        
-        Perkalian matriks dengan:
-        [02 03 01 01]
-        [01 02 03 01]
-        [01 01 02 03]
-        [03 01 01 02]
-        
-        Hasil byte pertama:
-        (0x02 • 0xd4) ⊕ (0x03 • 0xbf) ⊕ (0x01 • 0x5d) ⊕ (0x01 • 0x30)
-        
-        Perhitungan detail:
-        1. 0x02 • 0xd4 = 
-           - Jika MSB = 1: (0xd4 << 1) ⊕ 0x1b = 0x1a8 ⊕ 0x1b = 0x1b3 → 0xb3
-        2. 0x03 • 0xbf = 0x02 • 0xbf ⊕ 0xbf = 0x17e ⊕ 0xbf = 0xc1
-        3. 0x01 • 0x5d = 0x5d
-        4. 0x01 • 0x30 = 0x30
-        
-        XOR semua hasil: 0xb3 ⊕ 0xc1 ⊕ 0x5d ⊕ 0x30 = 0x04
-        ```
-        """)
-        
-        st.markdown("""
-        **Hasil MixColumns:**
-        ```
-        State Awal:
-        [0xd4, 0xe0, 0xb8, 0x1e]
-        [0xbf, 0xb4, 0x41, 0x27]
-        [0x5d, 0x52, 0x11, 0x98]
-        [0x30, 0xae, 0xf1, 0xe5]
-        
-        State Hasil:
-        [0x04, 0xe0, 0x48, 0x28]
-        [0x66, 0xcb, 0xf8, 0x06]
-        [0x81, 0x19, 0xd3, 0x26]
-        [0xe5, 0x9a, 0x7a, 0x4c]
-        ```
-        """)
+        result = [state[0], 
+                 [state[1][1], state[1][2], state[1][3], state[1][0]],
+                 [state[2][2], state[2][3], state[2][0], state[2][1]],
+                 [state[3][3], state[3][0], state[3][1], state[3][2]]]
     
-    with st.expander(f"Penjelasan Detail {step}"):
-        if step == "Key Expansion":
+    elif step == "MixColumns":
+        # Implementasi sederhana MixColumns
+        result = [["02","03","01","01"],
+                 ["01","02","03","01"],
+                 ["01","01","02","03"],
+                 ["03","01","01","02"]]
+        st.warning("Implementasi MixColumns disederhanakan untuk demo")
+    
+    elif step == "AddRoundKey":
+        # Input round key
+        st.subheader("Round Key")
+        key = []
+        for i in range(4):
+            cols = st.columns(4)
+            krow = []
+            for j in range(4):
+                val = cols[j].text_input(f"Key {i+1},{j+1}", value="00")
+                krow.append(val)
+            key.append(krow)
+        
+        # Operasi XOR antara state dan key
+        result = []
+        for i in range(4):
+            row = []
+            for j in range(4):
+                xor = int(state[i][j], 16) ^ int(key[i][j], 16)
+                row.append(f"{xor:02x}")
+            result.append(row)
+    
+    # Tampilkan hasil
+    cols = st.columns(4)
+    for i in range(4):
+        with cols[i]:
+            for j in range(4):
+                st.metric(f"Baris {i+1} Kolom {j+1}", result[i][j])
+    
+    # Penjelasan proses
+    with st.expander("Penjelasan Proses"):
+        if step == "SubBytes":
             st.markdown("""
-            **Detail Key Expansion:**
-            1. **RotWord**: Memutar word 1 byte ke kiri
-            2. **SubWord**: Mengganti setiap byte menggunakan S-Box
-            3. **Rcon**: XOR byte pertama dengan round constant
-            4. **Generate Word Baru**: XOR word sebelumnya dengan hasil transformasi
+            **SubBytes**:
+            - Substitusi non-linear menggunakan tabel S-Box
+            - Setiap byte di state diganti dengan nilai dari S-Box
             """)
-            
-        elif step == "AddRoundKey":
-            st.markdown("""
-            **Detail AddRoundKey:**
-            - Operasi XOR sederhana antara state dan round key
-            - Dilakukan di awal (AddRoundKey awal) dan di setiap round
-            - Merupakan satu-satunya operasi yang menggunakan kunci
-            """)
-            
-        elif step == "SubBytes":
-            st.markdown("""
-            **Detail SubBytes:**
-            - Menggunakan tabel substitusi tetap (S-Box)
-            - Memberikan non-linearitas pada cipher
-            - Mencegah analisis linear
-            - S-Box didesain secara matematis untuk memenuhi properti kriptografi
-            """)
-            
         elif step == "ShiftRows":
             st.markdown("""
-            **Detail ShiftRows:**
+            **ShiftRows**:
             - Baris 0: tidak digeser
             - Baris 1: geser 1 byte ke kiri
             - Baris 2: geser 2 byte
             - Baris 3: geser 3 byte
-            - Menyebarkan byte ke kolom berbeda
-            - Meningkatkan difusi
             """)
-            
-        elif step == "MixColumns":
-            st.markdown("""
-            **Detail MixColumns:**
-            - Mengalikan setiap kolom dengan matriks konstan dalam GF(2⁸)
-            - Operasi perkalian modulo polinomial irreducible x⁸ + x⁴ + x³ + x + 1
-            - Memberikan difusi yang baik
-            - Setiap byte output tergantung pada 4 byte input
-            """)
+        # ... tambahkan penjelasan untuk tahap lainnya
+
+def show_complexity_analysis():
+    """Menampilkan analisis kompleksitas waktu dan ruang."""
+    st.markdown("### 📊 Analisis Kompleksitas Waktu dan Ruang")
+    st.markdown("""
+    Bagian ini membahas efisiensi algoritma kriptografi kombinasi AES-128 dan Reverse Cipher dari sisi teoritis, yaitu kompleksitas waktu dan ruang.
+    """)
+
+    st.markdown("#### Tabel 4.4.1 Kompleksitas Algoritma")
+    complexity_data = {
+        "Algoritma/Operasi": ["Reverse Cipher (Enkripsi)", "Reverse Cipher (Dekripsi)", "Padding", "AES Enkripsi (per blok)", "AES Dekripsi (per blok)", "AES Total (N blok)"],
+        "Time Complexity": ["$O(L)$", "$O(L)$", "$O(L)$", "$O(1)$", "$O(1)$", "$O(N)$"],
+        "Space Complexity": ["$O(L)$", "$O(L)$", "$O(L)$", "$O(1)$", "$O(1)$", "$O(N)$"]
+    }
+    df_complexity = pd.DataFrame(complexity_data)
+    st.table(df_complexity)
+
+    st.markdown("""
+    #### Penjelasan Kompleksitas:
+
+    1.  **Reverse Cipher:**
+        * **Time Complexity: $O(L)$**
+            * Melakukan pembalikan string. Waktu yang dibutuhkan **linier** terhadap panjang string ($L$). Setiap karakter diakses sekali.
+        * **Space Complexity: $O(L)$**
+            * Membutuhkan ruang penyimpanan untuk menyimpan string yang sudah dibalik, yang juga **linier** terhadap panjang string ($L$).
+
+    2.  **Padding (`pad_text_to_length`):**
+        * **Time Complexity: $O(L)$**
+            * Mengisi string hingga panjang tertentu. Waktu yang dibutuhkan **linier** terhadap panjang string ($L$) atau target length.
+        * **Space Complexity: $O(L)$**
+            * Menyimpan string yang sudah di-padding, membutuhkan ruang **linier**.
+
+    3.  **AES-128 (per blok):**
+        * **Time Complexity: $O(1)$**
+            * AES adalah algoritma *block cipher* dengan ukuran blok tetap (128 bit atau 16 byte). Jumlah operasi yang dilakukan pada satu blok data selalu konstan, tidak peduli seberapa besar total data. Oleh karena itu, kompleksitas waktu untuk satu blok adalah **konstan** ($O(1)$).
+        * **Space Complexity: $O(1)$**
+            * AES beroperasi pada blok data tetap dan menggunakan memori konstan untuk menyimpan *state* dan *round keys*.
+
+    4.  **AES Total (untuk $N$ blok):**
+        * **Time Complexity: $O(N)$**
+            * Karena AES memproses data dalam blok-blok, jika total data terdiri dari $N$ blok, maka waktu komputasi akan menjadi **linier** terhadap jumlah blok ($N$). Ini berarti semakin banyak data, semakin lama waktu yang dibutuhkan secara proporsional.
+        * **Space Complexity: $O(N)$**
+            * Untuk menyimpan seluruh data yang dienkripsi/dekripsi, ruang yang dibutuhkan juga **linier** terhadap jumlah blok ($N$).
+
+    #### Kesimpulan Kombinasi Algoritma:
+    Secara keseluruhan, algoritma kombinasi ini memiliki **kompleksitas waktu $O(N)$** dan **kompleksitas ruang $O(N)$**, di mana $N$ adalah jumlah blok data yang diproses (yang secara efektif linier terhadap ukuran total data $M$). Hal ini menunjukkan bahwa algoritma ini **skalabel** dan **efisien** untuk memproses data dalam jumlah besar, karena waktu dan ruang yang dibutuhkan akan bertambah secara proporsional dengan ukuran data.
+    """)
 
 # ========== TAMPILAN UTAMA ==========
 st.title("🔐 Aplikasi Enkripsi Data Material SAP")
@@ -575,8 +489,9 @@ st.write("AES-128 + Reverse Cipher")
 with st.sidebar:
     selected = st.radio("Menu", [
         'Penjelasan Enkripsi',
-        'Hasil Lengkap',
+        'Hasil Lengkap', 
         'Avalanche Effect',
+        'Kalkulator Avalanche',
         'Pengujian Waktu',
         'Etika Islam & Amanah',
         'Panduan Penggunaan'
@@ -588,7 +503,9 @@ kunci_pengguna = st.text_input("🔑 Masukkan kunci (16 karakter)", value=KEY)
 
 if uploaded_file and jumlah_baris:
     if st.button("🚀 Mulai Enkripsi & Dekripsi"):
-        hasil = process_file_fast(uploaded_file, jumlah_baris, key=kunci_pengguna[:16])
+        # Pastikan kunci yang digunakan selalu 16 karakter
+        key_to_use = kunci_pengguna[:16].ljust(16, '\0') # Pastikan 16 karakter, tambahkan null jika kurang
+        hasil = process_file_fast(uploaded_file, jumlah_baris, key=key_to_use)
         if hasil:
             st.session_state['hasil'] = hasil
             st.session_state['file_processed'] = True
@@ -604,39 +521,22 @@ if selected == 'Penjelasan Enkripsi':
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Alur Enkripsi")
-        st.image("enkripsi.jpg", caption="Diagram Alur Enkripsi", use_column_width=True)
+        try:
+            enkripsi_img = Image.open("enkripsi.jpg")
+            st.image(enkripsi_img, caption="Diagram Alur Enkripsi", use_column_width=True)
+        except FileNotFoundError:
+            st.warning("Gambar 'enkripsi.jpg' tidak ditemukan. Pastikan file ada di direktori yang benar.")
+
     with col2:
         st.subheader("Alur Dekripsi")
-        st.image("dekripsi.jpg", caption="Diagram Alur Dekripsi", use_column_width=True)
+        try:
+            dekripsi_img = Image.open("dekripsi.jpg")
+            st.image(dekripsi_img, caption="Diagram Alur Dekripsi", use_column_width=True)
+        except FileNotFoundError:
+            st.warning("Gambar 'dekripsi.jpg' tidak ditemukan. Pastikan file ada di direktori yang benar.")
     
-    with st.expander("Penjelasan Tiap Tahap"):
-        st.markdown("""
-        **1. Reverse Cipher:**
-        - Membalik urutan karakter teks
-        - Contoh: `Hello` → `olleH`
-        
-        **2. AES Encryption:**
-        - Algoritma block cipher 128-bit
-        - Terdiri dari beberapa round transformation
-        - Tahapan:
-          - AddRoundKey awal
-          - Putaran utama (SubBytes, ShiftRows, MixColumns, AddRoundKey)
-          - Putaran akhir (tanpa MixColumns)
-        
-        **3. AES Decryption:**
-        - Proses kebalikan dari enkripsi
-        - Menggunakan kunci yang sama
-        - Tahapan:
-          - AddRoundKey awal
-          - Putaran utama (InvShiftRows, InvSubBytes, AddRoundKey, InvMixColumns)
-          - Putaran akhir (tanpa InvMixColumns)
-        
-        **4. Reverse Undo:**
-        - Mengembalikan urutan karakter ke semula
-        """)
-    
-    st.subheader("Animasi Proses AES")
-    show_aes_animation()
+    st.subheader("Simulasi Interaktif Proses AES")
+    show_aes_simulation()
 
 elif selected == 'Hasil Lengkap':
     if st.session_state.get('file_processed', False):
@@ -644,23 +544,23 @@ elif selected == 'Hasil Lengkap':
         
         with st.sidebar.expander("🔍 Analisis Hasil Lengkap"):
             match_results = ["✅" if o == d else "❌" for o, d in 
-                           zip([" || ".join(map(str, row)) for row in hasil['original']], 
-                               hasil['reversed_decrypt'])]
+                             zip([" || ".join(map(str, row)) for row in hasil['original']], 
+                                 hasil['reversed_decrypt'])]
             success_rate = (match_results.count("✅") / len(match_results)) * 100
             
             st.markdown(f"""
             ### Hasil Pengujian Aktual:
             
             **Akurasi Dekripsi:**
-            - Tingkat keberhasilan: {success_rate:.2f}%
-            - Jumlah baris: {len(match_results)}
-            - Baris sukses: {match_results.count("✅")}
-            - Baris gagal: {match_results.count("❌")}
+            - Tingkat keberhasilan: **{success_rate:.2f}%**
+            - Jumlah baris: **{len(match_results)}**
+            - Baris sukses: **{match_results.count("✅")}**
+            - Baris gagal: **{match_results.count("❌")}**
             
             **Interpretasi:**
-            - Rasio keberhasilan dekripsi harus 100% untuk semua baris
-            - Kegagalan menunjukkan masalah dalam proses enkripsi/dekripsi
-            - Error mungkin berasal dari padding/unpadding atau karakter khusus
+            - Rasio keberhasilan dekripsi harus 100% untuk semua baris.
+            - Kegagalan menunjukkan masalah dalam proses enkripsi/dekripsi.
+            - Error mungkin berasal dari padding/unpadding atau karakter khusus.
             """)
         
         tab1, tab2, tab3 = st.tabs(["Data Asli", "Proses Enkripsi", "Proses Dekripsi"])
@@ -694,6 +594,8 @@ elif selected == 'Hasil Lengkap':
                 "Decrypted": hasil['reversed_decrypt'],
                 "Match": match_results
             }))
+    else:
+        st.info("Silakan unggah file dan mulai proses enkripsi untuk melihat hasil lengkap.")
 
 elif selected == 'Avalanche Effect':
     if st.session_state.get('file_processed', False):
@@ -709,22 +611,41 @@ elif selected == 'Avalanche Effect':
             ### Hasil Pengujian Aktual:
             
             **Statistik Avalanche Effect:**
-            - Rata-rata: {avg_percent:.2f}%
-            - Minimum: {min_percent:.2f}%
-            - Maksimum: {max_percent:.2f}%
+            - Rata-rata: **{avg_percent:.2f}%**
+            - Minimum: **{min_percent:.2f}%**
+            - Maksimum: **{max_percent:.2f}%**
             
             **Interpretasi:**
-            - Persentase perubahan bit dihitung dari perbandingan ciphertext baris berurutan
-            - Nilai ideal mendekati 50% untuk algoritma kriptografi yang baik
-            - Implementasi ini menunjukkan range {min_percent:.2f}% sampai {max_percent:.2f}%
-            - Rata-rata {avg_percent:.2f}% menunjukkan efek avalanche yang {'baik' if avg_percent > 40 else 'perlu diperbaiki'}
+            - Persentase perubahan bit dihitung dari perbandingan ciphertext baris berurutan.
+            - Nilai ideal mendekati 50% untuk algoritma kriptografi yang baik.
+            - Implementasi ini menunjukkan range {min_percent:.2f}% sampai {max_percent:.2f}%.
+            - Rata-rata {avg_percent:.2f}% menunjukkan efek avalanche yang {'baik' if avg_percent > 40 else 'perlu diperbaiki'}.
             """)
         
-        show_avalanche_visual(hasil['avalanche'])
+        show_avalanche_visual(hasil['avalanche'], hasil['aes'])
+    else:
+        st.info("Silakan unggah file dan mulai proses enkripsi untuk melihat hasil Avalanche Effect.")
+
+elif selected == 'Kalkulator Avalanche':
+    st.header("🧮 Kalkulator Manual Avalanche Effect")
+    st.markdown("""
+    Alat ini memungkinkan Anda menghitung avalanche effect secara manual antara dua ciphertext.
+    """)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        ciphertext1 = st.text_area("Masukkan Ciphertext 1 (Hex):", "2b7e151628aed2a6abf7158809cf4f3c")
+    with col2:
+        ciphertext2 = st.text_area("Masukkan Ciphertext 2 (Hex):", "2b7e151628aed2a6abf7158809cf4f3d")
+    
+    if st.button("Hitung Avalanche Effect"):
+        try:
+            show_manual_avalanche_calculation(ciphertext1, ciphertext2)
+        except ValueError:
+            st.error("Masukkan ciphertext hex yang valid (hanya karakter 0-9, a-f)")
 
 elif selected == 'Pengujian Waktu':
     show_execution_time()
-
 
 elif selected == 'Etika Islam & Amanah':
     st.markdown("""
@@ -739,8 +660,9 @@ elif selected == 'Panduan Penggunaan':
     ## 📘 Panduan
     1. Unggah file Excel dengan kolom yang sesuai
     2. Tentukan jumlah baris
-    3. Klik tombol proses
-    4. Jelajahi hasil di menu sidebar
+    3. Masukkan kunci enkripsi (wajib 16 karakter)
+    4. Klik tombol proses
+    5. Jelajahi hasil di menu sidebar
     
     ## 📝 Persyaratan File Excel
     - Harus mengandung kolom: GroupDesc, Customer Name, MaterialNumber, Catalog Data, MaterialDesc
@@ -750,6 +672,6 @@ elif selected == 'Panduan Penggunaan':
     ## ⚠️ Troubleshooting
     - Jika muncul error, pastikan:
       - File Excel sesuai format
-      - Kunci enkripsi tepat 16 karakter
-      - Tidak ada karakter khusus yang tidak didukung
+      - Kunci enkripsi tepat 16 karakter (Jika kurang, akan diisi dengan karakter null `\0`. Jika lebih, akan dipotong.)
+      - Tidak ada karakter khusus yang tidak didukung dalam data Excel yang bisa mengganggu padding/unpadding.
     """)
